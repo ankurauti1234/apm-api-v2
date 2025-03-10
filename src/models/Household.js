@@ -1,8 +1,12 @@
+// models/Household.js
 import mongoose from 'mongoose';
 
 const householdSchema = new mongoose.Schema({
-    HHID: Number,
-    METER_ID: Number,
+    HHID: {
+        type: Number,
+        required: true,
+        unique: true
+    },
     hh_email: String,
     hh_phone: String,
     max_members: Number,
@@ -14,6 +18,7 @@ const householdSchema = new mongoose.Schema({
     Region: String,
     TVOwnership: String,
     NoOfTVs: Number,
+    submeter_mac: { type: String, required: false },
     members: [{
         MMID: String,
         Name: { type: String, required: true },

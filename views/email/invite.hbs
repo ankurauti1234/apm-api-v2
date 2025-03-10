@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Inditronics Meter Management Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+      --primary: #5046e5;
+      --primary-light: #eef2ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --dark: #111827;
+      --gray: #6b7280;
+      --light-gray: #f3f4f6;
+      --border: #e5e7eb;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      color: var(--dark);
+      background-color: #f9fafb;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .email-wrapper {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .email-header {
+      background-color: var(--primary);
+      position: relative;
+      height: 120px;
+      overflow: hidden;
+    }
+    
+    .header-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0.1;
+      background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E");
+    }
+    
+    .logo-container {
+      position: absolute;
+      top: 50%;
+      left: 30px;
+      transform: translateY(-50%);
+      z-index: 10;
+    }
+    
+    .logo-text {
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    
+    .logo-subtitle {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      font-weight: 400;
+    }
+    
+    .email-body {
+      padding: 40px 30px;
+      position: relative;
+    }
+    
+    .card-container {
+      background-color: white;
+      border-radius: 16px;
+      margin-top: -60px;
+      position: relative;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    
+    .card-header {
+      padding: 24px 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 5px;
+    }
+    
+    .card-subtitle {
+      color: var(--gray);
+      font-size: 14px;
+    }
+    
+    .card-body {
+      padding: 30px;
+    }
+    
+    .welcome-text {
+      font-size: 16px;
+      margin-bottom: 24px;
+      color: var(--dark);
+    }
+    
+    .credentials-section {
+      background-color: var(--primary-light);
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    
+    .credentials-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 16px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .credentials-title svg {
+      margin-right: 6px;
+    }
+    
+    .credential-item {
+      margin-bottom: 16px;
+    }
+    
+    .credential-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .credential-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray);
+      margin-bottom: 6px;
+    }
+    
+    .credential-value {
+      background-color: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: var(--dark);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    
+    .button {
+      display: inline-block;
+      background-color: var(--primary);
+      color: white;
+      font-weight: 500;
+      font-size: 14px;
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(80, 70, 229, 0.3);
+    }
+    
+    .button:hover {
+      background-color: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(80, 70, 229, 0.4);
+    }
+    
+    .expiry-alert {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      background-color: #fff7ed;
+      border-left: 3px solid var(--warning);
+      border-radius: 6px;
+      margin-top: 24px;
+    }
+    
+    .expiry-alert svg {
+      flex-shrink: 0;
+      margin-right: 12px;
+      fill: var(--warning);
+    }
+    
+    .expiry-text {
+      font-size: 13px;
+      color: #9a3412;
+    }
+    
+    .help-text {
+      margin-top: 30px;
+      color: var(--gray);
+      font-size: 14px;
+    }
+    
+    .divider {
+      height: 1px;
+      background-color: var(--border);
+      margin: 30px 0;
+    }
+    
+    .email-footer {
+      padding: 20px 30px;
+      background-color: var(--light-gray);
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray);
+    }
+    
+    .footer-text {
+      margin-bottom: 12px;
+    }
+    
+    .footer-text:last-child {
+      margin-bottom: 0;
+    }
+    
+    @media only screen and (max-width: 480px) {
+      .email-body {
+        padding: 30px 15px;
+      }
+      
+      .card-header, .card-body {
+        padding: 20px;
+      }
+      
+      .logo-container {
+        left: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-header">
+      <div class="header-pattern"></div>
+      <div class="logo-container">
+        <div class="logo-text">INDITRONICS</div>
+        <div class="logo-subtitle">Meter Management</div>
+      </div>
+    </div>
+    
+    <div class="email-body">
+      <div class="card-container">
+        <div class="card-header">
+          <h1 class="card-title">Account Created</h1>
+          <p class="card-subtitle">Your dashboard access is ready</p>
+        </div>
+        
+        <div class="card-body">
+          <p class="welcome-text">Hello {{firstname}}, your account for the Inditronics Meter Management Dashboard has been created. Please use the credentials below to access your account.</p>
+          
+          <div class="credentials-section">
+            <div class="credentials-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Your Access Credentials
+            </div>
+            
+            <div class="credential-item">
+              <div class="credential-label">Email Address</div>
+              <div class="credential-value">{{email}}</div>
+            </div>
+            
+            <div class="credential-item">
+              <div class="credential-label">Temporary Password</div>
+              <div class="credential-value">{{tempPassword}}</div>
+            </div>
+            
+            <div class="credential-item">
+              <div class="credential-label">One-Time Password (OTP)</div>
+              <div class="credential-value">{{otp}}</div>
+            </div>
+          </div>
+          
+          <div class="button-container">
+            <a href="{{dashboardUrl}}" class="button">Activate Your Account</a>
+          </div>
+          
+          <div class="expiry-alert">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+            </svg>
+            <div class="expiry-text">This activation link and OTP will expire in 7 days.</div>
+          </div>
+          
+          <div class="help-text">
+            <p>After activation, you'll be prompted to set a new password and complete your profile setup.</p>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="help-text">
+            <p>If you have any questions or need assistance, please contact your system administrator.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="email-footer">
+      <p class="footer-text">This is an automated message. Please do not reply to this email.</p>
+      <p class="footer-text">© 2025 Inditronics. All rights reserved.</p>
+      <p class="footer-text">Smart Meter Solutions • Secure • Reliable</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import express from "express";
+import { WebSocketServer } from 'ws';
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -8,13 +9,22 @@ import householdRoutes from "./src/routes/household-routes.js";
 import mediaRoutes from "./src/routes/media-routes.js";
 import eventsRoutes from "./src/routes/events-routes.js";
 import configRoutes from './src/routes/config-routes.js';
+import otaRoutes from './src/routes/ota-routes.js';
 import eventTypeRoutes from './src/routes/event-type-routes.js';
+import geolocationRoutes from './src/routes/geolocation-routes.js';
+import androidLocationRoutes from './src/routes/android-location-routes.js'
+import sshRoutes from './src/routes/ssh-routes.js';
+import { setupWebSocket } from './src/controllers/ssh-controller.js';
 
 // Load environment variables
 dotenv.config();
 
 // Initialize Express app
 const app = express();
+
+
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // Middleware
 app.use(cors());
@@ -34,11 +44,15 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/survey", householdRoutes);
+app.use("/api/hh", householdRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/events", eventsRoutes);
+app.use("/api/ota", otaRoutes);
 app.use('/api', configRoutes);
 app.use('/api/event-types', eventTypeRoutes);
+app.use('/api/geolocate', geolocationRoutes);
+app.use('/api/location', androidLocationRoutes);
+app.use('/api/ssh', sshRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -51,6 +65,10 @@ app.use((err, req, res, next) => {
 
 // Start the server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.log(`Server running on port ${PORT}`);
 });
+
+
+const wss = new WebSocketServer({ server });
+setupWebSocket(wss);

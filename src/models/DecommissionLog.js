@@ -2,12 +2,12 @@ import mongoose from 'mongoose';
 
 const decommissionLogSchema = new mongoose.Schema({
   devices: [{
-    deviceId: Number,
-    status: { type: String, enum: ['pending', 'completed'], default: 'pending' },
-    acknowledgedAt: { type: Date, default: null }
+    deviceId: String,
+    status: { type: String, default: 'pending' },
+    acknowledgedAt: Date
   }],
-  createdAt: { type: Date, default: Date.now },
-  completedAt: { type: Date, default: null }
+  completedAt: Date,
+  createdAt: { type: Date, default: Date.now }
 });
 
 export default mongoose.model('DecommissionLog', decommissionLogSchema);

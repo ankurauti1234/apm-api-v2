@@ -45,7 +45,6 @@ export const pushConfig = async (req, res) => {
     });
     await configLog.save();
 
-    // Check if MQTT is connected before publishing
     if (!mqttClient.connected) {
       console.error('MQTT client not connected');
       return res.status(503).json({

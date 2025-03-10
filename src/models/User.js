@@ -8,20 +8,25 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   company: { type: String, required: true },
   designation: { type: String, required: true },
-  roles: { type: [String], enum: ["user", "admin", "executive", "developer"], default: ["user"] },
+  roles: { 
+    type: [String], 
+    enum: ["user", "admin", "executive", "developer"], 
+    default: ["user"] 
+  },
   password: { type: String, required: true },
   isEmailVerified: { type: Boolean, default: false },
-  isPhoneVerified: { type: Boolean, default: false },
-});
+  mustChangePassword: { type: Boolean, default: true },
+  inviteToken: { type: String },
+  otp: { type: String },
+  otpExpires: { type: Date }
+}, { timestamps: true });
 
-// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Compare password
 userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };

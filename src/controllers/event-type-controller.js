@@ -1,47 +1,71 @@
 import EventType from '../models/EventType.js';
 
-// Add single event type
+
+// Add priority to addEventType
 export const addEventType = async (req, res) => {
   try {
-    const { typeId, name, isAlert } = req.body;
-    
-    const eventType = new EventType({
-      typeId,
-      name,
-      isAlert: isAlert ?? false // Use provided value or default to false
-    });
+      const { typeId, name, isAlert, priority } = req.body;
+      
+      const eventTypeData = {
+          typeId,
+          name,
+          isAlert: isAlert ?? false
+      };
 
-    const savedEventType = await eventType.save();
-    res.status(201).json({
-      success: true,
-      data: savedEventType
-    });
+      if (isAlert && priority) {
+          if (!['high', 'low', 'critical'].includes(priority)) {
+              return res.status(400).json({
+                  success: false,
+                  message: "Invalid priority value. Must be 'high', 'low', or 'critical'"
+              });
+          }
+          eventTypeData.priority = priority;
+      }
+
+      const eventType = new EventType(eventTypeData);
+      const savedEventType = await eventType.save();
+      
+      res.status(201).json({
+          success: true,
+          data: savedEventType
+      });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+      res.status(400).json({
+          success: false,
+          message: error.message
+      });
   }
 };
 
-// Add multiple event types
+// Add priority to addMultipleEventTypes
 export const addMultipleEventTypes = async (req, res) => {
   try {
-    const eventTypes = req.body.map(event => ({
-      ...event,
-      isAlert: event.isAlert ?? false // Use provided value or default to false
-    }));
-    
-    const savedEventTypes = await EventType.insertMany(eventTypes);
-    res.status(201).json({
-      success: true,
-      data: savedEventTypes
-    });
+      const eventTypes = req.body.map(event => {
+          const eventData = {
+              ...event,
+              isAlert: event.isAlert ?? false
+          };
+          
+          if (event.isAlert && event.priority) {
+              if (!['high', 'low', 'critical'].includes(event.priority)) {
+                  throw new Error(`Invalid priority value for ${event.name}`);
+              }
+              eventData.priority = event.priority;
+          }
+          
+          return eventData;
+      });
+      
+      const savedEventTypes = await EventType.insertMany(eventTypes);
+      res.status(201).json({
+          success: true,
+          data: savedEventTypes
+      });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+      res.status(400).json({
+          success: false,
+          message: error.message
+      });
   }
 };
 
@@ -61,38 +85,56 @@ export const getEventTypes = async (req, res) => {
   }
 };
 
-// Update event type
+// Update event type (modified to handle priority only for alerts)
 export const updateEventType = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { typeId, name, isAlert } = req.body;
+      const { id } = req.params;
+      const { typeId, name, isAlert, priority } = req.body;
 
-    const updatedEventType = await EventType.findByIdAndUpdate(
-      id,
-      { 
-        typeId, 
-        name,
-        isAlert: isAlert ?? false // Use provided value or default to false
-      },
-      { new: true, runValidators: true }
-    );
+      const updateData = { 
+          typeId, 
+          name,
+          isAlert: isAlert ?? false
+      };
 
-    if (!updatedEventType) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event type not found'
+      // Only update priority if it's an alert
+      if (isAlert && priority) {
+          if (!['high', 'low', 'critical'].includes(priority)) {
+              return res.status(400).json({
+                  success: false,
+                  message: "Invalid priority value. Must be 'high', 'low', or 'critical'"
+              });
+          }
+          updateData.priority = priority;
+      } else if (!isAlert && priority) {
+          return res.status(400).json({
+              success: false,
+              message: "Priority can only be set for alert types"
+          });
+      }
+
+      const updatedEventType = await EventType.findByIdAndUpdate(
+          id,
+          updateData,
+          { new: true, runValidators: true }
+      );
+
+      if (!updatedEventType) {
+          return res.status(404).json({
+              success: false,
+              message: 'Event type not found'
+          });
+      }
+
+      res.status(200).json({
+          success: true,
+          data: updatedEventType
       });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: updatedEventType
-    });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+      res.status(400).json({
+          success: false,
+          message: error.message
+      });
   }
 };
 

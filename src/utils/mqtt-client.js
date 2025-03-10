@@ -1,4 +1,3 @@
-// src/utils/mqttClient.js
 import mqtt from 'mqtt';
 import fs from 'fs';
 import path from 'path';
@@ -7,88 +6,158 @@ import ConfigLog from '../models/ConfigLog.js';
 import DecommissionLog from '../models/DecommissionLog.js';
 import logger from './logger.js';
 
-// Get __dirname equivalent in ESM
+// Convert file URL to directory path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load certificates
 const ca = fs.readFileSync(path.join(__dirname, '..', 'certs', 'root-CA.crt'));
 const cert = fs.readFileSync(path.join(__dirname, '..', 'certs', 'certificate.pem.crt'));
 const key = fs.readFileSync(path.join(__dirname, '..', 'certs', 'private.pem.key'));
 
+// MQTT client configuration
 const mqttClient = mqtt.connect({
-  host: 'a3uoz4wfsx2nz3-ats.iot.ap-south-1.amazonaws.com',
-  port: 8883,
-  protocol: 'mqtts',
-  ca: ca,
-  cert: cert,
-  key: key,
-  clientId: `server_${Math.random().toString(16).substr(2, 8)}`,
-  reconnectPeriod: 1000,
+  host: 'a3uoz4wfsx2nz3-ats.iot.ap-south-1.amazonaws.com', // AWS IoT Core endpoint
+  port: 8883, // Secure MQTT port
+  protocol: 'mqtts', // MQTT over TLS
+  ca: ca, // Root CA certificate
+  cert: cert, // Client certificate
+  key: key, // Client private key
+  clientId: `server_${Math.random().toString(16).substr(2, 8)}`, // Unique client ID
+  reconnectPeriod: 1000, // Reconnect every 1 second if disconnected
 });
 
+// Event: When MQTT client connects
 mqttClient.on('connect', () => {
   logger.log('MQTT Connected');
-  mqttClient.subscribe('apm/installation', (err) => {
-    if (err) console.error('Subscription error:', err);
+
+  // Subscribe to configuration topic
+  mqttClient.subscribe('apm/config', (err) => {
+    if (err) {
+      logger.error('Config subscription error:', err);
+    } else {
+      logger.log('Subscribed to apm/config');
+    }
+  });
+
+  // Subscribe to decommission topic
+  mqttClient.subscribe('apm/decommission', (err) => {
+    if (err) {
+      logger.error('Decommission subscription error:', err);
+    } else {
+      logger.log('Subscribed to apm/decommission');
+    }
   });
 });
 
+// Event: When MQTT client encounters an error
 mqttClient.on('error', (err) => {
-  console.error('MQTT Error:', err);
+  logger.error('MQTT Error:', err);
 });
 
+// Event: When MQTT client is reconnecting
 mqttClient.on('reconnect', () => {
   logger.log('MQTT Reconnecting...');
 });
 
+// Event: When MQTT connection is closed
 mqttClient.on('close', () => {
   logger.log('MQTT Connection Closed');
 });
 
-// Handle MQTT Acknowledgments
+// Event: When a message is received on a subscribed topic
 mqttClient.on('message', async (topic, message) => {
-  if (topic === 'apm/installation') {
+  try {
     const payload = JSON.parse(message.toString());
-    const meterId = payload.METER_ID;
+    logger.log(`Received message on ${topic}: ${JSON.stringify(payload)}`);
 
-    if (payload.parameter && payload.status === 'completed') {
-      const configLog = await ConfigLog.findOne({
-        parameter: payload.parameter,
-        value: payload.value,
-        'devices.deviceId': meterId
-      });
-      if (configLog) {
-        const device = configLog.devices.find(d => d.deviceId === meterId);
+    // Handle configuration acknowledgments
+    if (topic === 'apm/config') {
+      if (payload.parameter && payload.status === 'completed') {
+        const meterId = payload.meter_id.toString(); // Ensure meterId is a string
+        logger.log(`Processing config ack for meter ${meterId}`);
+
+        // Find the corresponding configuration log
+        const configLog = await ConfigLog.findOne({
+          parameter: payload.parameter,
+          value: payload.value,
+          'devices.deviceId': meterId,
+        });
+
+        if (!configLog) {
+          logger.log(`No config log found for meter ${meterId}, parameter: ${payload.parameter}`);
+          return;
+        }
+
+        // Update the device status in the configuration log
+        const device = configLog.devices.find((d) => d.deviceId === meterId);
         if (device) {
+          logger.log(`Before update - Device status: ${device.status}`);
           device.status = 'completed';
           device.acknowledgedAt = new Date();
-          if (configLog.devices.every(d => d.status === 'completed')) {
+
+          // If all devices are completed, mark the log as completed
+          if (configLog.devices.every((d) => d.status === 'completed')) {
             configLog.completedAt = new Date();
           }
+
           await configLog.save();
-          logger.log(`Config acknowledgment processed for meter ${meterId}`);
+          logger.log(`After update - Saved config log for meter ${meterId}`);
+
+          // Verify the update
+          const updatedLog = await ConfigLog.findById(configLog._id);
+          const updatedDevice = updatedLog.devices.find((d) => d.deviceId === meterId);
+          logger.log(`Verified status: ${updatedDevice.status}`);
+        } else {
+          logger.log(`Device ${meterId} not found in config log`);
         }
       }
     }
 
-    if (payload.is_decommissioning_success === true) {
-      const decommissionLog = await DecommissionLog.findOne({
-        'devices.deviceId': meterId
-      });
-      if (decommissionLog) {
-        const device = decommissionLog.devices.find(d => d.deviceId === meterId);
+    // Handle decommission acknowledgments
+    if (topic === 'apm/decommission') {
+      const meterId = payload.meter_id.toString(); // Ensure meterId is a string
+      if (payload.is_decommissioning_success === true) {
+        logger.log(`Processing decommission ack for meter ${meterId}`);
+
+        // Find the corresponding decommission log
+        const decommissionLog = await DecommissionLog.findOne({
+          'devices.deviceId': meterId,
+        });
+
+        if (!decommissionLog) {
+          logger.log(`No decommission log found for meter ${meterId}`);
+          return;
+        }
+
+        // Update the device status in the decommission log
+        const device = decommissionLog.devices.find((d) => d.deviceId === meterId);
         if (device) {
+          logger.log(`Before update - Device status: ${device.status}`);
           device.status = 'completed';
           device.acknowledgedAt = new Date();
-          if (decommissionLog.devices.every(d => d.status === 'completed')) {
+
+          // If all devices are completed, mark the log as completed
+          if (decommissionLog.devices.every((d) => d.status === 'completed')) {
             decommissionLog.completedAt = new Date();
           }
+
           await decommissionLog.save();
-          logger.log(`Decommission acknowledgment processed for meter ${meterId}`);
+          logger.log(`After update - Saved decommission log for meter ${meterId}`);
+
+          // Verify the update
+          const updatedLog = await DecommissionLog.findById(decommissionLog._id);
+          const updatedDevice = updatedLog.devices.find((d) => d.deviceId === meterId);
+          logger.log(`Verified status: ${updatedDevice.status}`);
+        } else {
+          logger.log(`Device ${meterId} not found in decommission log`);
         }
       }
     }
+  } catch (error) {
+    logger.error(`Error processing MQTT message on ${topic}: ${error.message}`);
   }
 });
 
+// Export the MQTT client
 export default mqttClient;

@@ -1,6 +1,5 @@
 import AWS from 'aws-sdk';
 import dotenv from 'dotenv';
-import logger from '../utils/logger.js';
 
 dotenv.config();
 
@@ -28,15 +27,14 @@ export const uploadToS3 = async (file, bucket, type) => {
   }
 };
 
-// Health check function that runs every 5 seconds
-// const checkS3Health = async () => {
-//   try {
-//     await s3.headBucket({ Bucket: process.env.AUDIO_BUCKET }).promise();
-//     await s3.headBucket({ Bucket: process.env.IMAGE_BUCKET }).promise();
-//     logger.log('S3 buckets are healthy');
-//   } catch (error) {
-//     console.error('S3 health check failed:', error);
-//   }
-// };
-
-// setInterval(checkS3Health, 5000);
+export const deleteFromS3 = async (bucket, key) => {
+  const params = {
+    Bucket: bucket,
+    Key: key,
+  };
+  try {
+    await s3.deleteObject(params).promise();
+  } catch (error) {
+    if (error.code !== 'NoSuchKey') throw new Error(`S3 delete failed: ${error.message}`);
+  }
+};

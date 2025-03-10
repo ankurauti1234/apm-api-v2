@@ -1,5 +1,7 @@
+// src/controllers/decommissionController.js
 import mqttClient from '../utils/mqtt-client.js';
 import DecommissionLog from '../models/DecommissionLog.js';
+import logger from '../utils/logger.js';
 
 export const decommissionDevices = async (req, res) => {
   try {
@@ -7,19 +9,16 @@ export const decommissionDevices = async (req, res) => {
 
     let targetDevices = [];
 
-    // Handle single or multiple device IDs
     if (deviceIds) {
       targetDevices = Array.isArray(deviceIds) ? deviceIds : [deviceIds];
     }
 
-    // Handle device range
     if (deviceRange && deviceRange.min && deviceRange.max) {
       for (let i = deviceRange.min; i <= deviceRange.max; i++) {
-        targetDevices.push(i);
+        targetDevices.push(i.toString()); // Ensure deviceId is a string
       }
     }
 
-    // Handle remaining devices that haven't acknowledged
     if (remaining) {
       const pendingDecommissions = await DecommissionLog.find({
         'devices.status': 'pending'
@@ -34,16 +33,30 @@ export const decommissionDevices = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'No target devices specified' });
     }
 
-    // Save to MongoDB
     const decommissionLog = new DecommissionLog({
-      devices: targetDevices.map(id => ({ deviceId: id }))
+      devices: targetDevices.map(id => ({ deviceId: id.toString() })) // Ensure deviceId is a string
     });
     await decommissionLog.save();
 
-    // Publish to MQTT
+    if (!mqttClient.connected) {
+      console.error('MQTT client not connected');
+      return res.status(503).json({
+        status: 'error',
+        message: 'MQTT service unavailable',
+        decommissionId: decommissionLog._id
+      });
+    }
+
     const payload = JSON.stringify({ decommissioning: true });
     targetDevices.forEach(deviceId => {
-      mqttClient.publish(`/apm/config/${deviceId}`, payload, { qos: 1 });
+      const topic = `apm/decommission/${deviceId}`; // Updated topic
+      mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
+        if (err) {
+          console.error(`Failed to publish to ${topic}:`, err);
+        } else {
+          logger.log(`Published decommission to ${topic}`);
+        }
+      });
     });
 
     res.status(200).json({
@@ -52,6 +65,7 @@ export const decommissionDevices = async (req, res) => {
       decommissionId: decommissionLog._id
     });
   } catch (error) {
+    console.error('Decommission error:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };

@@ -1,15 +1,17 @@
 import mongoose from 'mongoose';
 
+const deviceSchema = new mongoose.Schema({
+  deviceId: String,
+  status: { type: String, default: 'pending' },
+  acknowledgedAt: Date
+});
+
 const configLogSchema = new mongoose.Schema({
   parameter: String,
   value: String,
-  devices: [{
-    deviceId: Number,
-    status: { type: String, enum: ['pending', 'completed'], default: 'pending' },
-    acknowledgedAt: { type: Date, default: null }
-  }],
-  createdAt: { type: Date, default: Date.now },
-  completedAt: { type: Date, default: null }
+  devices: [deviceSchema],
+  completedAt: Date,
+  createdAt: { type: Date, default: Date.now }
 });
 
 export default mongoose.model('ConfigLog', configLogSchema);

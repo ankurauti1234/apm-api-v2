@@ -6,6 +6,8 @@ const mediaSchema = new mongoose.Schema({
   bucket: { type: String, required: true },
   originalName: { type: String, required: true },
   size: { type: Number, required: true },
+  deviceId: { type: String, required: true },
+  timestamp: { type: Date, required: true },
   uploadDate: { type: Date, default: Date.now },
 });
 
