@@ -290,6 +290,7 @@ export const getLatestEventByDeviceAndType = async (req, res) => {
   }
 };
 
+// Modified getAssociatedDevicesWithLatestEvents API
 export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
   try {
     const {
@@ -304,7 +305,12 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
       toDate
     } = req.query;
 
-    const meterQuery = { associated: true };
+    // Query for active assigned meters
+    const meterQuery = { 
+      associated: true,
+      is_assigned: true 
+    };
+    
     if (hhid) {
       meterQuery.associated_with = Number(hhid);
     }
@@ -317,7 +323,7 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
     const meters = await Meter.find(meterQuery)
       .skip(skip)
       .limit(limitNum)
-      .select('METER_ID associated_with');
+      .select('METER_ID associated_with SIM2_IMSI SIM1_PASS SIM2_PASS created_at');
 
     if (!meters.length) {
       return res.status(200).json({
@@ -348,8 +354,8 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
     }
     if (fromDate || toDate) {
       eventsQuery.TS = {};
-      if (fromDate) eventsQuery.TS.$gte = new Date(fromDate);
-      if (toDate) eventsQuery.TS.$lte = new Date(toDate);
+      if (fromDate) query.TS.$gte = new Date(fromDate);
+      if (toDate) query.TS.$lte = new Date(toDate);
     }
 
     const pipeline = [
@@ -373,9 +379,14 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
     const deviceEventsMap = new Map();
     events.forEach(event => {
       if (!deviceEventsMap.has(event.DEVICE_ID)) {
+        const meterInfo = meters.find(m => m.METER_ID === event.DEVICE_ID);
         deviceEventsMap.set(event.DEVICE_ID, {
           deviceId: event.DEVICE_ID,
-          hhid: meters.find(m => m.METER_ID === event.DEVICE_ID)?.associated_with,
+          hhid: meterInfo?.associated_with,
+          sim2Imsi: meterInfo?.SIM2_IMSI,
+          sim1Pass: meterInfo?.SIM1_PASS,
+          sim2Pass: meterInfo?.SIM2_PASS,
+          createdAt: meterInfo?.created_at,
           events: []
         });
       }
@@ -396,6 +407,89 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
         totalPages,
         currentPage: pageNum,
         totalDevices: totalMeters,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// New API to fetch all meters
+export const getAllMeters = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      hhid,
+      associated,
+      isAssigned,
+      sim2Imsi,
+      sim1Pass,
+      sim2Pass,
+      fromDate,
+      toDate
+    } = req.query;
+
+    const query = {};
+
+    // Filter options
+    if (hhid) {
+      query.associated_with = Number(hhid);
+    }
+    if (associated !== undefined) {
+      query.associated = associated === 'true';
+    }
+    if (isAssigned !== undefined) {
+      query.is_assigned = isAssigned === 'true';
+    }
+    if (sim2Imsi) {
+      query.SIM2_IMSI = sim2Imsi;
+    }
+    if (sim1Pass !== undefined) {
+      query.SIM1_PASS = sim1Pass === 'true';
+    }
+    if (sim2Pass !== undefined) {
+      query.SIM2_PASS = sim2Pass === 'true';
+    }
+    if (fromDate || toDate) {
+      query.created_at = {};
+      if (fromDate) query.created_at.$gte = new Date(fromDate);
+      if (toDate) query.created_at.$lte = new Date(toDate);
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalMeters = await Meter.countDocuments(query);
+    const meters = await Meter.find(query)
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .select('METER_ID associated is_assigned associated_with SIM2_IMSI SIM1_PASS SIM2_PASS created_at');
+
+    const totalPages = Math.ceil(totalMeters / limitNum);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        meters: meters.map(meter => ({
+          meterId: meter.METER_ID,
+          isAssociated: meter.associated,
+          isAssigned: meter.is_assigned,
+          hhid: meter.associated_with,
+          sim2Imsi: meter.SIM2_IMSI,
+          sim1Pass: meter.SIM1_PASS,
+          sim2Pass: meter.SIM2_PASS,
+          createdAt: meter.created_at
+        })),
+        totalPages,
+        currentPage: pageNum,
+        totalMeters,
       },
     });
   } catch (error) {

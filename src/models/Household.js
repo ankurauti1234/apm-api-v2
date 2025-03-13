@@ -1,4 +1,3 @@
-// models/Household.js
 import mongoose from 'mongoose';
 
 const householdSchema = new mongoose.Schema({
@@ -10,15 +9,32 @@ const householdSchema = new mongoose.Schema({
     hh_email: String,
     hh_phone: String,
     max_members: Number,
-    hh_status: { type: Boolean, default: true },
-    otp: { type: String, default: null },
+    hh_status: { 
+        type: Boolean, 
+        default: true 
+    },
+    otp: { 
+        type: String, 
+        default: null 
+    },
+    is_assigned: {
+        type: Boolean,
+        default: false
+    },
     Address: String,
     City: String,
     State: String,
     Region: String,
     TVOwnership: String,
     NoOfTVs: Number,
-    submeter_mac: { type: String, required: false },
+    submeter_mac: [{ // Updated to array for multiple submeters
+        type: String,
+        required: false
+    }],
+    bounded_serial_numbers: [{ // Added to store serial numbers
+        type: String,
+        required: false
+    }],
     members: [{
         MMID: String,
         Name: { type: String, required: true },
@@ -70,5 +86,13 @@ const householdSchema = new mongoose.Schema({
         LikelihoodToBuyBasedOnStreamingContent: String
     }]
 });
+
+// Method to reset household data on decommission
+householdSchema.methods.resetHousehold = async function () {
+    this.is_assigned = false;
+    this.submeter_mac = [];
+    this.bounded_serial_numbers = [];
+    await this.save();
+};
 
 export default mongoose.model('Household', householdSchema);

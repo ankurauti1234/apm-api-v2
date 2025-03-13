@@ -3,7 +3,10 @@ import mongoose from 'mongoose';
 // MongoDB Connection
 const mongoConnect = async () => {
     if (mongoose.connection.readyState === 0) {
-        await mongoose.connect('mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/logo_base?retryWrites=true&w=majority&appName=Cluster0');
+        await mongoose.connect('mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/indi_test?retryWrites=true&w=majority&appName=Cluster0', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
         console.log('MongoDB connected');
     }
 };
@@ -16,6 +19,7 @@ const householdSchema = new mongoose.Schema({
     max_members: Number,
     hh_status: { type: Boolean, default: true },
     otp: { type: String, default: null },
+    is_assigned: { type: Boolean, default: false }, // Added for assignment tracking
     Address: String,
     City: String,
     State: String,
@@ -80,6 +84,10 @@ const meterSchema = new mongoose.Schema({
     METER_ID: { type: Number, required: true, unique: true },
     associated: { type: Boolean, default: false },
     associated_with: { type: Number, default: null },
+    is_assigned: { type: Boolean, default: false }, // Added for assignment tracking
+    SIM2_IMSI: { type: String, default: null }, // Added for SIM2 IMSI
+    SIM2_PASS: { type: Boolean, default: null }, // Added for SIM2 pass status
+    SIM1_PASS: { type: Boolean, default: null }, // Added for SIM1 pass status
     created_at: { type: Date, default: Date.now }
 });
 
@@ -94,35 +102,57 @@ const addHouseholdsAndMeters = async () => {
         const households = [];
         const meters = [];
 
-        for (let i = 100001; i <= 100010; i++) {
+        // Sample member data for variety
+        const memberTemplates = [
+            { Name: "Amit Sharma", Age: 35, Gender: "M", EducationLevel: "Graduate", Occupation: "Engineer" },
+            { Name: "Priya Patel", Age: 28, Gender: "F", EducationLevel: "Postgraduate", Occupation: "Doctor" },
+            { Name: "Rohan Desai", Age: 45, Gender: "M", EducationLevel: "Diploma", Occupation: "Technician" },
+            { Name: "Sneha Gupta", Age: 32, Gender: "F", EducationLevel: "Graduate", Occupation: "Teacher" }
+        ];
+
+        for (let i = 0; i < 10; i++) {
+            const hhid = 1001 + i;
+            const meterId = 50000101 + i;
+            const memberCount = (i % 4) + 1; // 1 to 4 members, cycling through
+            const members = [];
+
+            for (let j = 0; j < memberCount; j++) {
+                const template = memberTemplates[j % memberTemplates.length];
+                members.push({
+                    MMID: `${hhid}-${j + 1}`,
+                    Name: `${template.Name} ${hhid}`,
+                    Age: template.Age + (i % 5), // Vary age slightly
+                    Gender: template.Gender,
+                    EducationLevel: template.EducationLevel,
+                    Occupation: template.Occupation,
+                    PhoneNumber: `733013${1721 + i + j}` // Unique phone numbers
+                });
+            }
+
             households.push({
-                HHID: i,
-                hh_email: 'ankur.auti@inditronics.com',
-                hh_phone: `123456${i}`,
-                max_members: 4,
-                Address: `${i} Main Street`,
+                HHID: hhid,
+                hh_email: 'swapnil.gaikwad@inditronics.com',
+                hh_phone: '7330131721',
+                max_members: memberCount, // Set to the number of members
+                Address: `${hhid} Main Street`,
                 City: 'Pune',
                 State: 'Maharashtra',
                 Region: 'West',
                 TVOwnership: 'Yes',
                 NoOfTVs: 2,
-                submeter_mac: `00:1A:2B:3C:4D:${i.toString().slice(-2)}`,
-                members: [
-                    {
-                        MMID: `${i}-1`,
-                        Name: `Person${i}`,
-                        Age: 30,
-                        Gender: 'M',
-                        EducationLevel: 'Graduate',
-                        Occupation: 'Engineer'
-                    }
-                ]
+                submeter_mac: `00:1A:2B:3C:4D:${(i + 1).toString().padStart(2, '0')}`,
+                members: members,
+                is_assigned: false // Initially unassigned
             });
 
             meters.push({
-                METER_ID: i,
-                associated: true,
-                associated_with: i
+                METER_ID: meterId,
+                associated: false, // Initially unassociated
+                associated_with: null,
+                is_assigned: false, // Initially unassigned
+                SIM2_IMSI: null,
+                SIM2_PASS: null,
+                SIM1_PASS: null
             });
         }
 
@@ -132,7 +162,7 @@ const addHouseholdsAndMeters = async () => {
 
         // Insert meters
         await Meter.insertMany(meters);
-        console.log('10 meters added and associated successfully');
+        console.log('10 meters added successfully');
     } catch (error) {
         console.error('Error adding households and meters:', error);
     } finally {

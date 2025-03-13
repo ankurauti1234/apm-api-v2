@@ -6,7 +6,8 @@ import {
   getLatestEventByDeviceAndType,
   getAssociatedDevicesWithLatestEvents,
   getAlerts,
-  updateAlertStatus
+  updateAlertStatus,
+  getAllMeters
 } from '../controllers/events-controller.js';
 
 const router = express.Router();
@@ -16,7 +17,8 @@ router.get('/', getEvents);
 router.get('/realtime', getRealTimeEvents);
 router.get('/latest', getLatestEvents);
 router.get('/latest/:deviceId/:type', getLatestEventByDeviceAndType);
-router.get('/associated', getAssociatedDevicesWithLatestEvents);
+router.get('/meters/associated', getAssociatedDevicesWithLatestEvents);
+router.get('/meters', getAllMeters);
 
 // New alert routes
 router.get('/alerts', getAlerts);              // Get all alerts with filtering and pagination
