@@ -30,7 +30,7 @@ const meterSchema = new mongoose.Schema({
         type: Boolean,
         default: null
     },
-    submeter_mac: [{ // Updated to array for multiple submeters
+    submeter_mac: [{
         type: String,
         required: false
     }],
@@ -40,7 +40,6 @@ const meterSchema = new mongoose.Schema({
     }
 });
 
-// Method to reset meter data on decommission
 meterSchema.methods.resetMeter = async function () {
     this.associated = false;
     this.associated_with = null;

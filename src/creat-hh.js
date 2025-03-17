@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 // MongoDB Connection
 const mongoConnect = async () => {
     if (mongoose.connection.readyState === 0) {
-        await mongoose.connect('mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/indi_test?retryWrites=true&w=majority&appName=Cluster0', {
+        await mongoose.connect('mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/inditronics?retryWrites=true&w=majority&appName=Cluster0', {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
@@ -11,22 +11,35 @@ const mongoConnect = async () => {
     }
 };
 
-// Household Schema
-const householdSchema = new mongoose.Schema({
+// Function to generate random MAC address
+const generateRandomMac = () => {
+    const hexDigits = '0123456789abcdef';
+    let mac = '';
+    for (let i = 0; i < 6; i++) {
+        mac += hexDigits[Math.floor(Math.random() * 16)];
+        mac += hexDigits[Math.floor(Math.random() * 16)];
+        if (i < 5) mac += ':';
+    }
+    return mac;
+};
+
+// Household Model
+const Household = mongoose.model('Household', new mongoose.Schema({
     HHID: { type: Number, required: true, unique: true },
     hh_email: String,
     hh_phone: String,
     max_members: Number,
     hh_status: { type: Boolean, default: true },
     otp: { type: String, default: null },
-    is_assigned: { type: Boolean, default: false }, // Added for assignment tracking
+    is_assigned: { type: Boolean, default: false },
     Address: String,
     City: String,
     State: String,
     Region: String,
     TVOwnership: String,
     NoOfTVs: Number,
-    submeter_mac: { type: String, required: false },
+    submeter_mac: [{ type: String, required: false }],
+    bounded_serial_numbers: [{ type: String, required: false }],
     members: [{
         MMID: String,
         Name: { type: String, required: true },
@@ -77,22 +90,20 @@ const householdSchema = new mongoose.Schema({
         LikelihoodToBuyBasedOnTVShows: String,
         LikelihoodToBuyBasedOnStreamingContent: String
     }]
-});
+}));
 
-// Meter Schema
-const meterSchema = new mongoose.Schema({
+// Meter Model
+const Meter = mongoose.model('Meter', new mongoose.Schema({
     METER_ID: { type: Number, required: true, unique: true },
     associated: { type: Boolean, default: false },
     associated_with: { type: Number, default: null },
-    is_assigned: { type: Boolean, default: false }, // Added for assignment tracking
-    SIM2_IMSI: { type: String, default: null }, // Added for SIM2 IMSI
-    SIM2_PASS: { type: Boolean, default: null }, // Added for SIM2 pass status
-    SIM1_PASS: { type: Boolean, default: null }, // Added for SIM1 pass status
+    is_assigned: { type: Boolean, default: false },
+    SIM2_IMSI: { type: String, default: null },
+    SIM2_PASS: { type: Boolean, default: null },
+    SIM1_PASS: { type: Boolean, default: null },
+    submeter_mac: [{ type: String, required: false }],
     created_at: { type: Date, default: Date.now }
-});
-
-const Household = mongoose.model('Household', householdSchema);
-const Meter = mongoose.model('Meter', meterSchema);
+}));
 
 // Function to add households and meters
 const addHouseholdsAndMeters = async () => {
@@ -102,7 +113,6 @@ const addHouseholdsAndMeters = async () => {
         const households = [];
         const meters = [];
 
-        // Sample member data for variety
         const memberTemplates = [
             { Name: "Amit Sharma", Age: 35, Gender: "M", EducationLevel: "Graduate", Occupation: "Engineer" },
             { Name: "Priya Patel", Age: 28, Gender: "F", EducationLevel: "Postgraduate", Occupation: "Doctor" },
@@ -113,7 +123,7 @@ const addHouseholdsAndMeters = async () => {
         for (let i = 0; i < 10; i++) {
             const hhid = 1001 + i;
             const meterId = 50000101 + i;
-            const memberCount = (i % 4) + 1; // 1 to 4 members, cycling through
+            const memberCount = (i % 4) + 1;
             const members = [];
 
             for (let j = 0; j < memberCount; j++) {
@@ -121,38 +131,59 @@ const addHouseholdsAndMeters = async () => {
                 members.push({
                     MMID: `${hhid}-${j + 1}`,
                     Name: `${template.Name} ${hhid}`,
-                    Age: template.Age + (i % 5), // Vary age slightly
+                    Age: template.Age + (i % 5),
                     Gender: template.Gender,
                     EducationLevel: template.EducationLevel,
                     Occupation: template.Occupation,
-                    PhoneNumber: `733013${1721 + i + j}` // Unique phone numbers
+                    PhoneNumber: `733013${1721 + i + j}`
                 });
+            }
+
+            const householdSubmeterMacs = Array.from(
+                { length: Math.floor(Math.random() * 2) + 1 },
+                () => generateRandomMac()
+            );
+
+            // Specific submeter MAC addresses for meter 50000101
+            let meterSubmeterMacs;
+            if (meterId === 50000101) {
+                meterSubmeterMacs = [
+                    "e4:5f:01:f5:3e:5b",
+                    "e4:5f:01:f5:3e:02"
+                ];
+            } else {
+                meterSubmeterMacs = Array.from(
+                    { length: Math.floor(Math.random() * 2) + 1 },
+                    () => generateRandomMac()
+                );
             }
 
             households.push({
                 HHID: hhid,
                 hh_email: 'swapnil.gaikwad@inditronics.com',
                 hh_phone: '7330131721',
-                max_members: memberCount, // Set to the number of members
+                max_members: memberCount,
                 Address: `${hhid} Main Street`,
                 City: 'Pune',
                 State: 'Maharashtra',
                 Region: 'West',
                 TVOwnership: 'Yes',
                 NoOfTVs: 2,
-                submeter_mac: `00:1A:2B:3C:4D:${(i + 1).toString().padStart(2, '0')}`,
+                submeter_mac: householdSubmeterMacs,
+                bounded_serial_numbers: [],
                 members: members,
-                is_assigned: false // Initially unassigned
+                is_assigned: false
             });
 
             meters.push({
                 METER_ID: meterId,
-                associated: false, // Initially unassociated
+                associated: false,
                 associated_with: null,
-                is_assigned: false, // Initially unassigned
+                is_assigned: false,
                 SIM2_IMSI: null,
                 SIM2_PASS: null,
-                SIM1_PASS: null
+                SIM1_PASS: null,
+                submeter_mac: meterSubmeterMacs
             });
         }
 

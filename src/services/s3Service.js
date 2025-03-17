@@ -1,3 +1,4 @@
+// s3Service.js
 import AWS from 'aws-sdk';
 import dotenv from 'dotenv';
 
@@ -10,7 +11,7 @@ const s3 = new AWS.S3({
 });
 
 export const uploadToS3 = async (file, bucket, type) => {
-  const key = `${type}/${Date.now()}-${file.originalname}`;
+  const key = `${type}/update.swu`; // Fixed filename instead of timestamp
   
   const params = {
     Bucket: bucket,

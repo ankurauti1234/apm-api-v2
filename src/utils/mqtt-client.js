@@ -4,8 +4,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ConfigLog from '../models/ConfigLog.js';
 import DecommissionLog from '../models/DecommissionLog.js';
-import Meter from '../models/Meter.js';
-import Household from '../models/Household.js';
 import logger from './logger.js';
 
 // Convert file URL to directory path
@@ -139,24 +137,6 @@ mqttClient.on('message', async (topic, message) => {
                     }
                     await decommissionLog.save();
                     logger.log(`After update - Saved decommission log for meter ${meterId}`);
-
-                    // Reset Meter and Household data
-                    const meter = await Meter.findOne({ METER_ID: Number(meterId) });
-                    if (meter) {
-                        const associatedHHID = meter.associated_with;
-                        await meter.resetMeter();
-                        logger.log(`Meter ${meterId} reset successfully`);
-
-                        if (associatedHHID) {
-                            const household = await Household.findOne({ HHID: associatedHHID });
-                            if (household) {
-                                await household.resetHousehold();
-                                logger.log(`Household ${associatedHHID} reset successfully`);
-                            }
-                        }
-                    } else {
-                        logger.log(`Meter ${meterId} not found in database`);
-                    }
 
                     const updatedLog = await DecommissionLog.findById(decommissionLog._id);
                     const updatedDevice = updatedLog.devices.find((d) => d.deviceId === meterId);

@@ -14,6 +14,7 @@ import eventTypeRoutes from './src/routes/event-type-routes.js';
 import geolocationRoutes from './src/routes/geolocation-routes.js';
 import androidLocationRoutes from './src/routes/android-location-routes.js'
 import sshRoutes from './src/routes/ssh-routes.js';
+import assetsRoutes from './src/routes/assets-routes.js';
 import { setupWebSocket } from './src/controllers/ssh-controller.js';
 
 // Load environment variables
@@ -44,7 +45,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/hh", householdRoutes);
+app.use("/api/households", householdRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/ota", otaRoutes);
@@ -53,6 +54,7 @@ app.use('/api/event-types', eventTypeRoutes);
 app.use('/api/geolocate', geolocationRoutes);
 app.use('/api/location', androidLocationRoutes);
 app.use('/api/ssh', sshRoutes);
+app.use('/api/assets', assetsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

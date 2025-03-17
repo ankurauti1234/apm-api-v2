@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../utils/logger.js';
 
 // API Keys
 const GOOGLE_API_KEY = 'AIzaSyDD83aXp60C4_8JcC9L5int-l-AVqKaAOc';
@@ -56,7 +57,7 @@ export const getGeolocationGoogle = async (req, res) => {
       provider: 'google',
     });
   } catch (error) {
-    console.error('Google API Error:', error.message);
+    logger.error('Google API Error:', error.message);
     if (error.response) {
       res.status(500).json({
         error: 'Google API error',
@@ -123,7 +124,7 @@ export const getGeolocationUnwired = async (req, res) => {
       provider: 'unwiredlabs',
     });
   } catch (error) {
-    console.error('Unwired Labs API Error:', error.message);
+    logger.error('Unwired Labs API Error:', error.message);
     if (error.response) {
       res.status(500).json({
         error: 'Unwired Labs API error',

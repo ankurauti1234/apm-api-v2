@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import Version from '../models/OTAVersion.js';
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js';
+import logger from "../utils/logger.js";
 
 // Multer setup for file uploads
 const storage = multer.diskStorage({
@@ -36,7 +37,6 @@ const OTA_ZCK_FILENAME = 'output.zck';
 // Helper function to get next version
 const getNextVersion = async (customVersion) => {
   if (customVersion) {
-    // Validate custom version format
     const versionParts = customVersion.split('.');
     if (versionParts.length !== 3 || versionParts.some(part => isNaN(parseInt(part)))) {
       throw new Error('Invalid version format. Use x.x.x format');
@@ -63,14 +63,9 @@ const getNextVersion = async (customVersion) => {
 
     return `${major}.${minor}.${patch + 1}`;
   } catch (error) {
-    console.error('Error in getNextVersion:', error.message);
-    return '0.0.1'; // Fallback to initial version in case of error
+    logger.error('Error in getNextVersion:', error.message);
+    return '0.0.1';
   }
-};
-
-// Helper function to delete old S3 file
-const deleteOldS3File = async () => {
-  await deleteFromS3(S3_BUCKET, S3_SWU_KEY);
 };
 
 // Full Update: Upload update.swu to S3
@@ -80,11 +75,13 @@ export const uploadFullUpdate = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Please upload an .swu file' });
     }
 
-    const customVersion = req.body.version; // Get version from request body
+    const customVersion = req.body.version;
     const filePath = path.resolve(req.file.path);
     const fileBuffer = await fs.promises.readFile(filePath);
 
-    await deleteOldS3File();
+    // Delete existing update.swu if it exists
+    await deleteFromS3(S3_BUCKET, S3_SWU_KEY);
+
     const { url } = await uploadToS3(
       { buffer: fileBuffer, originalname: 'update.swu', mimetype: 'application/octet-stream' },
       S3_BUCKET,
@@ -109,7 +106,7 @@ export const uploadFullUpdate = async (req, res) => {
       version: newVersionNumber,
     });
   } catch (error) {
-    console.error('Full Update Error:', error);
+    logger.error('Full Update Error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Full update failed',
@@ -128,7 +125,9 @@ export const uploadDeltaSwu = async (req, res) => {
     const filePath = path.resolve(req.file.path);
     const fileBuffer = await fs.promises.readFile(filePath);
 
-    await deleteOldS3File();
+    // Delete existing update.swu if it exists
+    await deleteFromS3(S3_BUCKET, S3_SWU_KEY);
+
     const { url } = await uploadToS3(
       { buffer: fileBuffer, originalname: 'update.swu', mimetype: 'application/octet-stream' },
       S3_BUCKET,
@@ -143,7 +142,7 @@ export const uploadDeltaSwu = async (req, res) => {
       url,
     });
   } catch (error) {
-    console.error('Delta SWU Upload Error:', error);
+    logger.error('Delta SWU Upload Error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Delta SWU upload failed',
@@ -159,7 +158,7 @@ export const uploadDeltaZck = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Please upload a .zck file' });
     }
 
-    const customVersion = req.body.version; // Get version from request body
+    const customVersion = req.body.version;
     const filePath = path.resolve(req.file.path);
     const targetUrl = `${OTA_SERVER_URL}${OTA_ZCK_FILENAME}`;
     const fileStream = fs.createReadStream(filePath);
@@ -195,7 +194,7 @@ export const uploadDeltaZck = async (req, res) => {
       version: newVersionNumber,
     });
   } catch (error) {
-    console.error('Delta ZCK Upload Error:', error);
+    logger.error('Delta ZCK Upload Error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Delta ZCK upload failed',
@@ -210,7 +209,7 @@ export const getHistory = async (req, res) => {
     const history = await Version.find().sort({ uploadDate: -1 });
     res.status(200).json({ status: 'success', data: history });
   } catch (error) {
-    console.error('History Error:', error);
+    logger.error('History Error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch history',
@@ -220,4 +219,3 @@ export const getHistory = async (req, res) => {
 };
 
 export { upload };
-

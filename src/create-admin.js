@@ -8,7 +8,7 @@ dotenv.config();
 
 async function createAdmin() {
   try {
-    await mongoose.connect("mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/inditronics?retryWrites=true&w=majority&appName=Cluster0");
+    await mongoose.connect("mongodb+srv://ankurauti:ankurauti02@cluster0.7ikri.mongodb.net/indi_test?retryWrites=true&w=majority&appName=Cluster0");
     console.log("MongoDB connected");
 
     const hashedPassword = await bcrypt.hash("Ankur@123", 10);

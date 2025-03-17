@@ -1,9 +1,9 @@
 import multer from 'multer';
-
+import logger from "../utils/logger.js";
 const storage = multer.memoryStorage();
 
 const audioFilter = (req, file, cb) => {
-  console.log('Audio file details:', {
+  logger.log('Audio file details:', {
     originalname: file.originalname,
     mimetype: file.mimetype
   });

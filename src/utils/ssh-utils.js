@@ -2,6 +2,7 @@ import { Client } from 'ssh2';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import logger from "../utils/logger.js";
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +54,7 @@ export async function getActiveMeters() {
         port: 22,
         username: 'ubuntu',
         privateKey: readFileSync(EC2_PRIVATE_KEY_PATH, 'utf8'),
-        debug: (msg) => console.log(msg),
+        debug: (msg) => logger.log(msg),
       });
   });
 }
@@ -91,7 +92,7 @@ export function createSSHTunnel(meterId, port) {
         port: 22,
         username: 'ubuntu',
         privateKey: readFileSync(METER_PRIVATE_KEY_PATH, 'utf8'),
-        debug: (msg) => console.log(msg),
+        debug: (msg) => logger.log(msg),
       });
   });
 }

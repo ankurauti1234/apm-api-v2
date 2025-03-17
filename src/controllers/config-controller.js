@@ -46,7 +46,7 @@ export const pushConfig = async (req, res) => {
     await configLog.save();
 
     if (!mqttClient.connected) {
-      console.error('MQTT client not connected');
+      logger.error('MQTT client not connected');
       return res.status(503).json({
         status: 'error',
         message: 'MQTT service unavailable',
@@ -59,7 +59,7 @@ export const pushConfig = async (req, res) => {
       const topic = `apm/config/${deviceId}`;
       mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
         if (err) {
-          console.error(`Failed to publish to ${topic}:`, err);
+          logger.error(`Failed to publish to ${topic}:`, err);
         } else {
           logger.log(`Published config to ${topic}`);
         }
@@ -72,7 +72,7 @@ export const pushConfig = async (req, res) => {
       configId: configLog._id
     });
   } catch (error) {
-    console.error('Config push error:', error);
+    logger.error('Config push error:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };

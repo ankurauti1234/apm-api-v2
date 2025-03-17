@@ -1,5 +1,6 @@
 import { uploadToS3 } from '../services/s3Service.js';
 import Media from '../models/Media.js';
+import logger from "../utils/logger.js";
 
 export const uploadAudioController = async (req, res) => {
   try {
@@ -39,7 +40,7 @@ export const uploadAudioController = async (req, res) => {
       timestamp,
     });
   } catch (error) {
-    console.error('Audio upload error:', error);
+    logger.error('Audio upload error:', error);
     res.status(500).json({ error: 'Failed to upload audio' });
   }
 };
@@ -82,7 +83,7 @@ export const uploadImageController = async (req, res) => {
       timestamp,
     });
   } catch (error) {
-    console.error('Image upload error:', error);
+    logger.error('Image upload error:', error);
     res.status(500).json({ error: 'Failed to upload image' });
   }
 };
