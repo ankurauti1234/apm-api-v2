@@ -1,8 +1,11 @@
 import Events from "../models/Events.js";
 import Meter from "../models/Meter.js";
 import EventType from "../models/EventType.js";
-import Submeter from "../models/Submeter.js"; // Added Submeter import
+import Submeter from "../models/Submeter.js";
 import logger from "../utils/logger.js";
+import { Parser } from 'json2csv';
+import ExcelJS from 'exceljs';
+import { Readable } from 'stream';
 
 export const getEvents = async (req, res) => {
   try {
@@ -464,6 +467,7 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
   }
 };
 
+
 export const getAllMeters = async (req, res) => {
   try {
     const {
@@ -504,7 +508,7 @@ export const getAllMeters = async (req, res) => {
       .skip(skip)
       .limit(limitNum)
       .select("METER_ID associated is_assigned associated_with SIM2_IMSI SIM1_PASS SIM2_PASS submeter_mac created_at")
-      .sort({ created_at: -1 });
+      .sort({ created_at: 1 }); // Changed from -1 (descending) to 1 (ascending)
 
     const totalPages = Math.ceil(totalMeters / limitNum);
 
@@ -727,6 +731,122 @@ export const updateAlertStatus = async (req, res) => {
       data: updatedEvent
     });
   } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getEventsReport = async (req, res) => {
+  try {
+    const {
+      deviceId,
+      deviceIdMin,
+      deviceIdMax,
+      type,
+      fromDate,
+      toDate,
+      format = 'json'
+    } = req.query;
+
+    // Build the query
+    const query = {};
+
+    if (deviceId) {
+      query.DEVICE_ID = Number(deviceId);
+    }
+    if (deviceIdMin || deviceIdMax) {
+      query.DEVICE_ID = {};
+      if (deviceIdMin) query.DEVICE_ID.$gte = Number(deviceIdMin);
+      if (deviceIdMax) query.DEVICE_ID.$lte = Number(deviceIdMax);
+    }
+    if (type) {
+      const typeArray = type.split(',').map(t => Number(t.trim()));
+      query.Type = { $in: typeArray };
+    }
+    if (fromDate || toDate) {
+      query.TS = {};
+      if (fromDate) query.TS.$gte = Math.floor(new Date(fromDate).getTime() / 1000);
+      if (toDate) query.TS.$lte = Math.floor(new Date(toDate).getTime() / 1000);
+    }
+
+    // Fetch events without pagination
+    const events = await Events.find(query)
+      .sort({ TS: -1 })
+      .lean();
+
+    if (!events.length) {
+      return res.status(200).json({
+        status: "success",
+        message: "No events found for the specified criteria",
+        data: []
+      });
+    }
+
+    // Prepare data with specified columns
+    const reportData = events.map(event => ({
+      eventType: event.Type,
+      ts: new Date(event.TS * 1000).toISOString(), // Human-readable TS
+      eventName: event.Event_Name || 'N/A', // Default to 'N/A' if not present
+      details: event.Details ? JSON.stringify(event.Details) : 'N/A' // Stringify Details object
+    }));
+
+    // Handle different format requests
+    switch (format.toLowerCase()) {
+      case 'csv': {
+        const fields = ['eventType', 'ts', 'eventName', 'details'];
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(reportData);
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="events_report.csv"');
+        return res.status(200).send(csv);
+      }
+
+      case 'xlsx': {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Events Report');
+
+        worksheet.columns = [
+          { header: 'Event Type', key: 'eventType', width: 15 },
+          { header: 'TS', key: 'ts', width: 25 },
+          { header: 'Event Name', key: 'eventName', width: 20 },
+          { header: 'Details', key: 'details', width: 50 }
+        ];
+
+        worksheet.addRows(reportData);
+
+        worksheet.getRow(1).font = { bold: true };
+        
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        res.setHeader(
+          'Content-Disposition',
+          'attachment; filename="events_report.xlsx"'
+        );
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        return res.status(200).send(buffer);
+      }
+
+      case 'json':
+      default: {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="events_report.json"');
+        return res.status(200).json({
+          status: "success",
+          data: reportData,
+          totalEvents: reportData.length
+        });
+      }
+    }
+  } catch (error) {
+    logger.error("Error in getEventsReport:", error);
     res.status(500).json({
       status: "error",
       message: "Internal server error",

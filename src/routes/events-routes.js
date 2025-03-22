@@ -8,7 +8,8 @@ import {
   getAlerts,
   updateAlertStatus,
   getAllMeters,
-  getAllSubmeters // Added new API
+  getAllSubmeters,
+  getEventsReport
 } from '../controllers/events-controller.js';
 
 const router = express.Router();
@@ -25,5 +26,8 @@ router.get('/submeters', getAllSubmeters); // Added new route
 // New alert routes
 router.get('/alerts', getAlerts);
 router.put('/alerts/:eventId/status', updateAlertStatus);
+
+// Reports
+router.get('/reports', getEventsReport);
 
 export default router;

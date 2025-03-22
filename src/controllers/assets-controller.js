@@ -31,12 +31,10 @@ class AssetsController {
                                 METER_ID: parseInt(row.meterid)
                             }));
 
-                            // Find existing meter IDs
                             const existingMeterIds = await Meter.find({
                                 METER_ID: { $in: meters.map(m => m.METER_ID) }
                             }).distinct('METER_ID');
 
-                            // Filter out existing meters
                             const newMeters = meters.filter(
                                 meter => !existingMeterIds.includes(meter.METER_ID)
                             );
@@ -68,20 +66,30 @@ class AssetsController {
                                 created_at: new Date()
                             }));
 
-                            // Find existing submeter IDs
-                            const existingSubmeterIds = await Submeter.find({
-                                submeter_id: { $in: submeters.map(s => s.submeter_id) }
-                            }).distinct('submeter_id');
+                            // Find existing submeter IDs, MAC addresses, and serial numbers
+                            const existingSubmeters = await Submeter.find({
+                                $or: [
+                                    { submeter_id: { $in: submeters.map(s => s.submeter_id) } },
+                                    { submeter_mac: { $in: submeters.map(s => s.submeter_mac) } },
+                                    { bounded_serial_number: { $in: submeters.map(s => s.bounded_serial_number) } }
+                                ]
+                            });
 
-                            // Filter out existing submeters
-                            const newSubmeters = submeters.filter(
-                                submeter => !existingSubmeterIds.includes(submeter.submeter_id)
+                            const existingSubmeterIds = existingSubmeters.map(s => s.submeter_id);
+                            const existingMacs = existingSubmeters.map(s => s.submeter_mac);
+                            const existingSerials = existingSubmeters.map(s => s.bounded_serial_number);
+
+                            // Filter out submeters where any of the three identifiers already exist
+                            const newSubmeters = submeters.filter(submeter => 
+                                !existingSubmeterIds.includes(submeter.submeter_id) &&
+                                !existingMacs.includes(submeter.submeter_mac) &&
+                                !existingSerials.includes(submeter.bounded_serial_number)
                             );
 
                             if (newSubmeters.length === 0) {
                                 fs.unlinkSync(filePath);
                                 return res.status(200).json({
-                                    message: 'No new submeters to upload - all IDs already exist',
+                                    message: 'No new submeters to upload - all IDs, MACs, or serial numbers already exist',
                                     count: 0,
                                     data: []
                                 });

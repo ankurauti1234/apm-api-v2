@@ -69,10 +69,10 @@ export const addMultipleEventTypes = async (req, res) => {
   }
 };
 
-// Get all event types
+// Get all event types sorted by typeId in ascending order
 export const getEventTypes = async (req, res) => {
   try {
-    const eventTypes = await EventType.find();
+    const eventTypes = await EventType.find().sort({ typeId: 1 }); // 1 for ascending order
     res.status(200).json({
       success: true,
       data: eventTypes
@@ -142,8 +142,18 @@ export const updateEventType = async (req, res) => {
 export const deleteEventType = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Attempting to delete event type with ID:', id);
     
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('Invalid ID format:', id);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event type ID format'
+      });
+    }
+
     const deletedEventType = await EventType.findByIdAndDelete(id);
+    console.log('Delete result:', deletedEventType);
     
     if (!deletedEventType) {
       return res.status(404).json({
@@ -157,6 +167,7 @@ export const deleteEventType = async (req, res) => {
       message: 'Event type deleted successfully'
     });
   } catch (error) {
+    console.error('Delete error:', error);
     res.status(400).json({
       success: false,
       message: error.message

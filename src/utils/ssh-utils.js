@@ -8,8 +8,8 @@ import logger from "../utils/logger.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const EC2_PRIVATE_KEY_PATH = join(__dirname, 'aws_new_portkey_ankur');
-const METER_PRIVATE_KEY_PATH = join(__dirname, 'aws_new_portkey_ankur');
+const EC2_PRIVATE_KEY_PATH = join(__dirname, 'apm-portkey-server.pem');
+const METER_PRIVATE_KEY_PATH = join(__dirname, 'apm-portkey-server.pem');
 
 export async function getActiveMeters() {
   return new Promise((resolve, reject) => {
@@ -50,7 +50,7 @@ export async function getActiveMeters() {
         reject(new Error(`SSH connection failed: ${err.message}`));
       })
       .connect({
-        host: '13.127.76.4',
+        host: '13.235.91.236',
         port: 22,
         username: 'ubuntu',
         privateKey: readFileSync(EC2_PRIVATE_KEY_PATH, 'utf8'),
@@ -65,7 +65,7 @@ export function createSSHTunnel(meterId, port) {
 
     conn.on('ready', () => {
       // Execute the SSH command to connect to the meter through the EC2 instance
-      const command = `ssh -i /home/ubuntu/apm_auth_key  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  root@localhost -p ${port}`;
+      const command = `ssh -i /home/ubuntu/meter_auth_key  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  root@localhost -p ${port}`;
       conn.shell((err, stream) => {
         if (err) {
           conn.end();
@@ -88,7 +88,7 @@ export function createSSHTunnel(meterId, port) {
         reject(new Error(`SSH tunnel failed: ${err.message}`));
       })
       .connect({
-        host: '13.127.76.4',
+        host: '13.235.91.236',
         port: 22,
         username: 'ubuntu',
         privateKey: readFileSync(METER_PRIVATE_KEY_PATH, 'utf8'),
