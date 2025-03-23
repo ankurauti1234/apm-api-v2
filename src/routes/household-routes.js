@@ -1,8 +1,16 @@
-import express from "express";
-import { getAllHouseholds } from "../controllers/household-controller.js";
+// routes/householdRoutes.js
+import express from 'express';
+import { addHousehold, getHousehold, getAllHouseholds } from '../controllers/household-controller.js';
 
 const router = express.Router();
 
-router.get("/", getAllHouseholds);
+// Add new household
+router.post('/add', addHousehold);
+
+// Get household by HHID
+router.get('/:hhid', getHousehold);
+
+// Get all households
+router.get('/', getAllHouseholds);
 
 export default router;

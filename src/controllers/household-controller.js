@@ -1,88 +1,118 @@
-import Household from "../models/Household.js";
-import Meter from "../models/Meter.js";
-import logger from "../utils/logger.js";
+// householdController.js
+import Household from '../models/Household.js';
 
-export const getAllHouseholds = async (req, res) => {
+// Add new household
+export const addHousehold = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      hhid,
-    } = req.query;
+      const {
+          hh_email,
+          hh_phone,
+          max_members,
+          max_submeters,
+          members,
+          Address,
+          City,
+          State,
+          Region,
+          TVOwnership,
+          NoOfTVs
+      } = req.body;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
+      // Validation for required fields - explicitly check for undefined or null
+      if (
+          hh_email === undefined || hh_email === null || hh_email === "" ||
+          hh_phone === undefined || hh_phone === null || hh_phone === "" ||
+          max_members === undefined || max_members === null ||
+          max_submeters === undefined || max_submeters === null
+      ) {
+          return res.status(400).json({ 
+              message: 'Email, phone, max_members, and max_submeters are required' 
+          });
+      }
 
-    // Build the base query for households
-    const householdQuery = {};
-    if (hhid) householdQuery.HHID = Number(hhid);
+      // Validate members array length matches max_members
+      if (!members || members.length !== max_members) {
+          return res.status(400).json({ 
+              message: `Please provide exactly ${max_members} members` 
+          });
+      }
 
-    // Aggregation pipeline
-    const pipeline = [
-      // Match households with the initial query
-      { $match: householdQuery },
-      // Lookup meters where associated_with matches HHID
-      {
-        $lookup: {
-          from: "meters", // Collection name in MongoDB (lowercase model name)
-          localField: "HHID",
-          foreignField: "associated_with",
-          as: "associated_meters",
-        },
-      },
-      // Project the required fields
-      {
-        $project: {
-          hhid: "$HHID",
-          members: {
-            $map: {
-              input: { $range: [1, { $add: [{ $size: "$members" }, 1] }] },
-              as: "index",
-              in: { $concat: ["m", { $toString: "$$index" }] },
-            },
-          },
-          associated: { $gt: [{ $size: "$associated_meters" }, 0] }, // True if there are associated meters
-          meterId: {
-            $cond: {
-              if: { $gt: [{ $size: "$associated_meters" }, 0] },
-              then: { $arrayElemAt: ["$associated_meters.METER_ID", 0] }, // First meter ID if associated
-              else: null,
-            },
-          },
-        },
-      },
-      // Sort by HHID
-      { $sort: { hhid: 1 } },
-      // Pagination
-      {
-        $facet: {
-          metadata: [{ $count: "total" }],
-          data: [{ $skip: skip }, { $limit: limitNum }],
-        },
-      },
-    ];
+      // Validate required fields for each member
+      for (const member of members) {
+          if (!member.Name || !member.Age || !member.Gender) {
+              return res.status(400).json({ 
+                  message: 'Name, Age, and Gender are required for each member' 
+              });
+          }
+      }
 
-    const result = await Household.aggregate(pipeline);
-    const households = result[0]?.data || [];
-    const totalHouseholds = result[0]?.metadata[0]?.total || 0;
-    const totalPages = Math.ceil(totalHouseholds / limitNum);
+      // Get the last HHID and increment by 1
+      const lastHousehold = await Household.findOne().sort({ HHID: -1 });
+      const newHHID = lastHousehold ? lastHousehold.HHID + 1 : 1000;
 
-    res.status(200).json({
-      status: "success",
-      data: {
-        households,
-        totalPages,
-        currentPage: pageNum,
-        totalHouseholds,
-      },
-    });
+      // Create new household object
+      const newHousehold = new Household({
+          HHID: newHHID,
+          hh_email,
+          hh_phone,
+          max_members,
+          max_submeters,
+          members,
+          Address,
+          City,
+          State,
+          Region,
+          TVOwnership,
+          NoOfTVs
+      });
+
+      // Save to database
+      const savedHousehold = await newHousehold.save();
+      
+      res.status(201).json({
+          message: 'Household added successfully',
+          household: savedHousehold
+      });
   } catch (error) {
-    logger.error("Error in getAllHouseholds:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Internal server error",
-      error: error.message,
-    });
+      res.status(500).json({ 
+          message: 'Error adding household', 
+          error: error.message 
+      });
   }
+};
+
+// Get household by HHID
+export const getHousehold = async (req, res) => {
+    try {
+        const { hhid } = req.params;
+        
+        const household = await Household.findOne({ HHID: hhid });
+        
+        if (!household) {
+            return res.status(404).json({ message: 'Household not found' });
+        }
+        
+        res.status(200).json(household);
+    } catch (error) {
+        res.status(500).json({ 
+            message: 'Error fetching household', 
+            error: error.message 
+        });
+    }
+};
+
+// Get all households
+export const getAllHouseholds = async (req, res) => {
+    try {
+        const households = await Household.find();
+        res.status(200).json({
+            count: households.length,
+            households
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            message: 'Error fetching households', 
+            error: error.message 
+        });
+    }
 };
