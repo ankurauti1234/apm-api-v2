@@ -3,44 +3,39 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # Trigger deployment on push to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the repository code
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Set up SSH key
     - name: Install SSH Key
       uses: shimataro/ssh-key-action@v2
       with:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: unnecessary
+        known_hosts: 'unnecessary'  # We'll add it manually next
 
-    # Add EC2 to known_hosts
     - name: Add Known Hosts
-      run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    # Deploy to EC2
+    - name: Debug SSH Key
+      run: |
+        ls -la ~/.ssh/
+        cat ~/.ssh/id_rsa || echo "Private key not found"
+        cat ~/.ssh/known_hosts || echo "Known hosts not found"
+
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # Navigate to project directory
+        ssh -v -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+          whoami
           cd /home/ubuntu/apm-api-v2
-
-          # Pull latest code
           git pull origin main
-
-          # Install dependencies
           npm install
-
-          # Write .env file
           echo "${{ secrets.ENV_FILE }}" > .env
-
-          # Restart PM2
           pm2 restart all
         EOF
