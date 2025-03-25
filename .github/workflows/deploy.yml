@@ -17,22 +17,21 @@ jobs:
       uses: shimataro/ssh-key-action@v2
       with:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: 'unnecessary'  # We'll add it manually next
+        known_hosts: 'unnecessary'
 
     - name: Add Known Hosts
       run: |
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Debug SSH Key
+    - name: Debug SSH Setup
       run: |
         ls -la ~/.ssh/
-        cat ~/.ssh/id_rsa || echo "Private key not found"
-        cat ~/.ssh/known_hosts || echo "Known hosts not found"
+        head -n 2 ~/.ssh/id_rsa
+        ssh -v -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'whoami'
 
     - name: Deploy to EC2
       run: |
         ssh -v -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-          whoami
           cd /home/ubuntu/apm-api-v2
           git pull origin main
           npm install
