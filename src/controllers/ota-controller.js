@@ -96,6 +96,7 @@ export const uploadFullUpdate = async (req, res) => {
       version: newVersionNumber,
       url,
       type: 'full',
+      performedBy: req.user._id  // Add user who performed the upload
     });
     await newVersion.save();
 
@@ -183,6 +184,7 @@ export const uploadDeltaZck = async (req, res) => {
       url: swuUrl,
       type: 'delta',
       deltaUrl: targetUrl,
+      performedBy: req.user._id  // Add user who performed the upload
     });
     await newVersion.save();
 
@@ -206,7 +208,9 @@ export const uploadDeltaZck = async (req, res) => {
 // Get OTA version history
 export const getHistory = async (req, res) => {
   try {
-    const history = await Version.find().sort({ uploadDate: -1 });
+    const history = await Version.find()
+      .populate('performedBy', 'firstname lastname email')  // Populate user details
+      .sort({ uploadDate: -1 });
     res.status(200).json({ status: 'success', data: history });
   } catch (error) {
     logger.error('History Error:', error);

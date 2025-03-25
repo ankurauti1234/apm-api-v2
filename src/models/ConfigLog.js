@@ -11,7 +11,12 @@ const configLogSchema = new mongoose.Schema({
   value: String,
   devices: [deviceSchema],
   completedAt: Date,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  performedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  }
 });
 
 export default mongoose.model('ConfigLog', configLogSchema);

@@ -41,7 +41,8 @@ export const pushConfig = async (req, res) => {
     const configLog = new ConfigLog({
       parameter,
       value,
-      devices: targetDevices.map(id => ({ deviceId: id }))
+      devices: targetDevices.map(id => ({ deviceId: id })),
+      performedBy: req.user._id
     });
     await configLog.save();
 
@@ -79,7 +80,9 @@ export const pushConfig = async (req, res) => {
 
 export const getConfigStatus = async (req, res) => {
   try {
-    const logs = await ConfigLog.find().sort({ createdAt: -1 });
+    const logs = await ConfigLog.find()
+      .populate('performedBy', 'firstname lastname email')
+      .sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', data: logs });
   } catch (error) {
     res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });

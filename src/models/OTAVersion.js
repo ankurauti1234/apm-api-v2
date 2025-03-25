@@ -1,4 +1,3 @@
-// OTAVersion.js
 import mongoose from 'mongoose';
 
 const versionSchema = new mongoose.Schema({
@@ -8,6 +7,11 @@ const versionSchema = new mongoose.Schema({
   url: { type: String, required: true },
   type: { type: String, enum: ['full', 'delta'], required: true }, // Track update type
   deltaUrl: { type: String }, // Optional URL for delta update's .zck file
+  performedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  }
 });
 
 const OTAVersion = mongoose.model('OTAVersion', versionSchema);
