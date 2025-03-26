@@ -18,32 +18,35 @@ jobs:
       env:
         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
       run: |
-        # Ensure SSH directory exists and has correct permissions
+        # Create SSH directory
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
 
-        # Create the SSH key file with proper permissions
+        # Add SSH private key
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
 
-        # Add EC2 host to known hosts to prevent host key verification issues
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-        chmod 644 ~/.ssh/known_hosts
+        # Configure SSH config
+        cat << EOF > ~/.ssh/config
+        Host ec2-instance
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USERNAME }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+        EOF
+        chmod 600 ~/.ssh/config
 
-        # Verify SSH connection
-        ssh -i ~/.ssh/deploy_key -v ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} exit
+        # Test SSH connection
+        ssh -v -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} exit
 
-    - name: Deploy Application
-      env:
-        EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-        EC2_HOST: ${{ secrets.EC2_HOST }}
+    - name: Deploy Application Files
       run: |
-        # Deploy application files with verbose output for debugging
-        rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+        rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
           --exclude '.git' \
           --exclude 'node_modules' \
           --exclude '.env' \
-          ./ $EC2_USERNAME@$EC2_HOST:/home/$EC2_USERNAME/app/
+          ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USERNAME }}/app/
 
     - name: Configure Environment and Restart Application
       env:
@@ -67,7 +70,7 @@ jobs:
         EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
       run: |
         # SSH into EC2 and set up environment
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+        ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
           cd ~/app
           
           # Create .env file with actual values
@@ -88,8 +91,11 @@ jobs:
           UNWIREDLABS_API_KEY=$UNWIREDLABS_API_KEY
           EMAIL_USER=$EMAIL_USER
           EMAIL_PASS=$EMAIL_PASS
-          EOL
           PORT=$PORT
+          EOL
+          
+          # Ensure correct permissions
+          chmod 600 .env
           
           # Install dependencies
           npm ci
@@ -98,10 +104,10 @@ jobs:
           pm2 restart app || pm2 start src/server.js --name "app"
         '
 
-    - name: Deployment Success Notification
+    - name: Deployment Status
       if: success()
       run: echo "🚀 Deployment completed successfully to ${{ secrets.EC2_HOST }}"
 
-    - name: Deployment Failure Notification
+    - name: Deployment Failure
       if: failure()
       run: echo "❌ Deployment failed. Check workflow logs for details."
