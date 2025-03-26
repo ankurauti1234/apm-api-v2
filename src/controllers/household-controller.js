@@ -1,5 +1,6 @@
 // householdController.js
 import Household from '../models/Household.js';
+import Meter from '../models/Meter.js';
 
 // Add new household
 export const addHousehold = async (req, res) => {
@@ -112,6 +113,107 @@ export const getAllHouseholds = async (req, res) => {
     } catch (error) {
         res.status(500).json({ 
             message: 'Error fetching households', 
+            error: error.message 
+        });
+    }
+};
+
+export const getSimplifiedHouseholds = async (req, res) => {
+    try {
+        // Extract query parameters
+        const {
+            hhid,           // Filter by specific HHID
+            is_assigned,    // Filter by assignment status (true/false)
+            meter_id,       // Filter by associated meter ID
+            page = 1,       // Pagination page number (default: 1)
+            limit = 10      // Items per page (default: 10)
+        } = req.query;
+
+        // Build the household query
+        let householdQuery = {};
+
+        // HHID filter
+        if (hhid) {
+            householdQuery.HHID = parseInt(hhid);
+        }
+
+        // is_assigned filter
+        if (is_assigned !== undefined) {
+            householdQuery.is_assigned = is_assigned === 'true';
+        }
+
+        // Meter ID filter - first find matching households
+        let meterFilterHHIDs = null;
+        if (meter_id) {
+            const meters = await Meter.find({ 
+                METER_ID: parseInt(meter_id),
+                associated: true 
+            }).select('associated_with').lean();
+            meterFilterHHIDs = meters.map(m => m.associated_with);
+            if (meterFilterHHIDs.length > 0) {
+                householdQuery.HHID = { $in: meterFilterHHIDs };
+            } else {
+                // If no meters match, return empty result
+                return res.status(200).json({
+                    count: 0,
+                    totalPages: 0,
+                    currentPage: parseInt(page),
+                    households: []
+                });
+            }
+        }
+
+        // Calculate pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Fetch total count for pagination
+        const totalHouseholds = await Household.countDocuments(householdQuery);
+
+        // Fetch households with pagination
+        const households = await Household.find(householdQuery)
+            .select('HHID max_members is_assigned')
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+
+        // Fetch all associated meters
+        const meters = await Meter.find({ associated: true })
+            .select('METER_ID associated_with')
+            .lean();
+
+        // Process the response data
+        const simplifiedHouseholds = households.map(household => {
+            // Generate member labels (m1, m2, m3...)
+            const memberLabels = Array.from(
+                { length: household.max_members },
+                (_, i) => `m${i + 1}`
+            );
+
+            // Find submeters associated with this household
+            const associatedSubmeters = meters
+                .filter(meter => meter.associated_with === household.HHID)
+                .map(meter => meter.METER_ID);
+
+            return {
+                HHID: household.HHID,
+                members: memberLabels,
+                numberOfMembers: household.max_members,
+                is_assigned: household.is_assigned,
+                submeters: associatedSubmeters,
+                numberOfSubmeters: associatedSubmeters.length
+            };
+        });
+
+        res.status(200).json({
+            count: simplifiedHouseholds.length,
+            totalCount: totalHouseholds,
+            totalPages: Math.ceil(totalHouseholds / limit),
+            currentPage: parseInt(page),
+            households: simplifiedHouseholds
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            message: 'Error fetching simplified households', 
             error: error.message 
         });
     }
