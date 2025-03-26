@@ -39,14 +39,28 @@ jobs:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
         EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
       run: |
+        # Debug: Show environment variables
+        echo "Deploying with environment variables..."
+        
+        # SSH into EC2 and run deployment script
         ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'bash -s' << 'ENDSSH'
-          # Ensure script stops on any error
-          set -e
+          # Ensure verbose output and stop on error
+          set -ex
+
+          # Verify Node.js and npm are available
+          echo "Node.js version: $(node -v)"
+          echo "npm version: $(npm -v)"
 
           # Navigate to app directory
           cd ~/app
 
+          # Ensure node_modules is clean
+          rm -rf node_modules
+
           # Install dependencies
+          export PATH=/usr/local/bin:$PATH
+          which npm
+          which node
           npm ci
 
           # Create .env file with values
@@ -70,8 +84,14 @@ jobs:
           EOF
           PORT=$PORT
 
+          # Ensure PM2 is installed
+          npm install -g pm2 || true
+
           # Restart or start application with PM2
           pm2 restart app || pm2 start src/server.js --name "app"
+
+          # Show running processes
+          pm2 list
         ENDSSH
 
     - name: Deployment Status
