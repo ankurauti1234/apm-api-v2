@@ -16,7 +16,7 @@ export async function getActiveMeters() {
     const conn = new Client();
 
     conn.on('ready', () => {
-      conn.exec('sudo lsof -i -n | grep LISTEN | grep sshd', (err, stream) => {
+      conn.exec('sudo lsof -i -n | grep LISTEN | grep sshd | grep "[::1]:"', (err, stream) => {
         if (err) {
           conn.end();
           return reject(err);
@@ -28,21 +28,35 @@ export async function getActiveMeters() {
         });
 
         stream.on('close', () => {
-          const meters = output
+          // Parse the output into an array of meter objects with PID
+          const meterLines = output
             .split('\n')
             .filter((line) => line.includes('meter_'))
             .map((line) => {
+              const cols = line.split(/\s+/);
+              const pid = cols[1]; // PID is second column in lsof output
               const match = line.match(/meter_(\d+)/);
-              const portMatch = line.match(/:(\d+)/);
+              const portMatch = line.match(/\[::1\]:(\d+)/);
               return {
                 meterId: match ? match[1] : null,
                 port: portMatch ? portMatch[1] : null,
+                pid: pid ? parseInt(pid) : null
               };
             })
-            .filter((meter) => meter.meterId && meter.port);
+            .filter((meter) => meter.meterId && meter.port && meter.pid);
+
+          // Group by meterId and select the one with highest PID
+          const latestMeters = Object.values(
+            meterLines.reduce((acc, meter) => {
+              if (!acc[meter.meterId] || meter.pid > acc[meter.meterId].pid) {
+                acc[meter.meterId] = meter;
+              }
+              return acc;
+            }, {})
+          );
 
           conn.end();
-          resolve(meters);
+          resolve(latestMeters);
         });
       });
     })
