@@ -22,26 +22,57 @@ export const getEvents = async (req, res) => {
 
     const query = {};
 
+    // Handle deviceId - try both string and number matches
     if (deviceId) {
-      query.DEVICE_ID = deviceId; // No type conversion needed with Mixed
+      // Use $in operator to match both string and number versions
+      query.DEVICE_ID = { $in: [deviceId, Number(deviceId)] };
     }
+
+    // Handle deviceId range
     if (deviceIdMin || deviceIdMax) {
-      query.DEVICE_ID = {};
-      if (deviceIdMin) query.DEVICE_ID.$gte = deviceIdMin;
-      if (deviceIdMax) query.DEVICE_ID.$lte = deviceIdMax;
+      query.DEVICE_ID = query.DEVICE_ID || {};
+      if (deviceIdMin) {
+        const minNum = Number(deviceIdMin);
+        query.DEVICE_ID.$gte = !isNaN(minNum) ? minNum : deviceIdMin;
+      }
+      if (deviceIdMax) {
+        const maxNum = Number(deviceIdMax);
+        query.DEVICE_ID.$lte = !isNaN(maxNum) ? maxNum : deviceIdMax;
+      }
     }
+
+    // Handle type - ensure numeric comparison
     if (type) {
-      query.Type = Number(type);
+      const typeNum = Number(type);
+      if (!isNaN(typeNum)) {
+        query.Type = typeNum;
+      } else {
+        return res.status(400).json({
+          status: "error",
+          message: "Type must be a valid number"
+        });
+      }
     }
+
+    // Handle date range
     if (fromDate || toDate) {
       query.TS = {};
-      if (fromDate) query.TS.$gte = new Date(fromDate);
-      if (toDate) query.TS.$lte = new Date(toDate);
+      if (fromDate) {
+        const fromTS = new Date(fromDate).getTime();
+        query.TS.$gte = isNaN(fromTS) ? undefined : fromTS;
+      }
+      if (toDate) {
+        const toTS = new Date(toDate).getTime();
+        query.TS.$lte = isNaN(toTS) ? undefined : toTS;
+      }
     }
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
+
+    // Add logging to debug the query
+    logger.log('Query:', JSON.stringify(query));
 
     const totalEvents = await Events.countDocuments(query);
     const events = await Events.find(query)
@@ -49,7 +80,14 @@ export const getEvents = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    // Log the results
+    logger.log('Found events:', events.length);
+
     const totalPages = Math.ceil(totalEvents / limitNum);
+
+    if (events.length === 0) {
+      logger.log('No events found for deviceId:', deviceId, 'type:', type);
+    }
 
     res.status(200).json({
       status: "success",
@@ -61,6 +99,7 @@ export const getEvents = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Error in getEvents:', error);
     res.status(500).json({
       status: "error",
       message: "Internal server error",
