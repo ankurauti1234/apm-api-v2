@@ -23,12 +23,12 @@ export const getEvents = async (req, res) => {
     const query = {};
 
     if (deviceId) {
-      query.DEVICE_ID = Number(deviceId);
+      query.DEVICE_ID = deviceId; // No type conversion needed with Mixed
     }
     if (deviceIdMin || deviceIdMax) {
       query.DEVICE_ID = {};
-      if (deviceIdMin) query.DEVICE_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) query.DEVICE_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) query.DEVICE_ID.$gte = deviceIdMin;
+      if (deviceIdMax) query.DEVICE_ID.$lte = deviceIdMax;
     }
     if (type) {
       query.Type = Number(type);
@@ -86,11 +86,11 @@ export const getRealTimeEvents = async (req, res) => {
     res.flushHeaders();
 
     const query = {};
-    if (deviceId) query.DEVICE_ID = Number(deviceId);
+    if (deviceId) query.DEVICE_ID = deviceId;
     if (deviceIdMin || deviceIdMax) {
       query.DEVICE_ID = {};
-      if (deviceIdMin) query.DEVICE_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) query.DEVICE_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) query.DEVICE_ID.$gte = deviceIdMin;
+      if (deviceIdMax) query.DEVICE_ID.$lte = deviceIdMax;
     }
     if (type) query.Type = Number(type);
 
@@ -179,13 +179,12 @@ export const getLatestEvents = async (req, res) => {
       toDate
     } = req.query;
 
-    // First, get all meters with pagination
     const meterQuery = {};
-    if (deviceId) meterQuery.METER_ID = Number(deviceId);
+    if (deviceId) meterQuery.METER_ID = deviceId;
     if (deviceIdMin || deviceIdMax) {
       meterQuery.METER_ID = {};
-      if (deviceIdMin) meterQuery.METER_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) meterQuery.METER_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) meterQuery.METER_ID.$gte = deviceIdMin;
+      if (deviceIdMax) meterQuery.METER_ID.$lte = deviceIdMax;
     }
 
     const pageNum = parseInt(page);
@@ -210,10 +209,8 @@ export const getLatestEvents = async (req, res) => {
       });
     }
 
-    // Get device IDs from meters
     const deviceIds = meters.map(meter => meter.METER_ID);
 
-    // Build events query
     const eventsQuery = { DEVICE_ID: { $in: deviceIds } };
     if (type) eventsQuery.Type = Number(type);
     if (fromDate || toDate) {
@@ -222,7 +219,6 @@ export const getLatestEvents = async (req, res) => {
       if (toDate) eventsQuery.TS.$lte = new Date(toDate);
     }
 
-    // Aggregation pipeline to get latest event per type per device
     const pipeline = [
       { $match: eventsQuery },
       {
@@ -241,10 +237,8 @@ export const getLatestEvents = async (req, res) => {
 
     const events = await Events.aggregate(pipeline);
 
-    // Create a map to organize events by device ID
     const deviceEventsMap = new Map();
     
-    // Initialize map with all meters
     meters.forEach(meter => {
       deviceEventsMap.set(meter.METER_ID, {
         deviceId: meter.METER_ID,
@@ -260,7 +254,6 @@ export const getLatestEvents = async (req, res) => {
       });
     });
 
-    // Populate events into the map
     events.forEach(event => {
       if (deviceEventsMap.has(event.DEVICE_ID)) {
         deviceEventsMap.get(event.DEVICE_ID).events[event.Type] = {
@@ -271,7 +264,6 @@ export const getLatestEvents = async (req, res) => {
       }
     });
 
-    // Convert map to array and transform events object to array
     const result = Array.from(deviceEventsMap.values()).map(device => ({
       ...device,
       events: Object.values(device.events)
@@ -310,7 +302,7 @@ export const getLatestEventByDeviceAndType = async (req, res) => {
     }
 
     const query = {
-      DEVICE_ID: Number(deviceId),
+      DEVICE_ID: deviceId,
       Type: Number(type),
     };
 
@@ -388,11 +380,11 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
     const deviceIds = meters.map((meter) => meter.METER_ID);
 
     const eventsQuery = { DEVICE_ID: { $in: deviceIds } };
-    if (deviceId) eventsQuery.DEVICE_ID = Number(deviceId);
+    if (deviceId) eventsQuery.DEVICE_ID = deviceId;
     if (deviceIdMin || deviceIdMax) {
       eventsQuery.DEVICE_ID = eventsQuery.DEVICE_ID || {};
-      if (deviceIdMin) eventsQuery.DEVICE_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) eventsQuery.DEVICE_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) eventsQuery.DEVICE_ID.$gte = deviceIdMin;
+      if (deviceIdMax) eventsQuery.DEVICE_ID.$lte = deviceIdMax;
     }
     if (type) eventsQuery.Type = Number(type);
     if (fromDate || toDate) {
@@ -467,7 +459,6 @@ export const getAssociatedDevicesWithLatestEvents = async (req, res) => {
   }
 };
 
-
 export const getAllMeters = async (req, res) => {
   try {
     const {
@@ -486,7 +477,7 @@ export const getAllMeters = async (req, res) => {
 
     const meterQuery = {};
 
-    if (deviceId) meterQuery.METER_ID = Number(deviceId);
+    if (deviceId) meterQuery.METER_ID = deviceId;
     if (hhid) meterQuery.associated_with = Number(hhid);
     if (associated !== undefined) meterQuery.associated = associated === "true";
     if (isAssigned !== undefined) meterQuery.is_assigned = isAssigned === "true";
@@ -508,7 +499,7 @@ export const getAllMeters = async (req, res) => {
       .skip(skip)
       .limit(limitNum)
       .select("METER_ID associated is_assigned associated_with SIM2_IMSI SIM1_PASS SIM2_PASS submeter_mac created_at")
-      .sort({ created_at: 1 }); // Changed from -1 (descending) to 1 (ascending)
+      .sort({ created_at: 1 });
 
     const totalPages = Math.ceil(totalMeters / limitNum);
 
@@ -555,7 +546,6 @@ export const getAllSubmeters = async (req, res) => {
       toDate,
     } = req.query;
 
-    // Query for all submeters with optional filters
     const submeterQuery = {};
 
     if (submeterId) submeterQuery.submeter_id = Number(submeterId);
@@ -629,12 +619,12 @@ export const getAlerts = async (req, res) => {
     const query = { Type: { $in: alertTypeIds } };
 
     if (deviceId) {
-      query.DEVICE_ID = Number(deviceId);
+      query.DEVICE_ID = deviceId;
     }
     if (deviceIdMin || deviceIdMax) {
       query.DEVICE_ID = {};
-      if (deviceIdMin) query.DEVICE_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) query.DEVICE_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) query.DEVICE_ID.$gte = deviceIdMin;
+      if (deviceIdMax) query.DEVICE_ID.$lte = deviceIdMax;
     }
     if (type) {
       query.Type = Number(type);
@@ -739,7 +729,6 @@ export const updateAlertStatus = async (req, res) => {
   }
 };
 
-
 export const getEventsReport = async (req, res) => {
   try {
     const {
@@ -752,16 +741,15 @@ export const getEventsReport = async (req, res) => {
       format = 'json'
     } = req.query;
 
-    // Build the query
     const query = {};
 
     if (deviceId) {
-      query.DEVICE_ID = Number(deviceId);
+      query.DEVICE_ID = deviceId;
     }
     if (deviceIdMin || deviceIdMax) {
       query.DEVICE_ID = {};
-      if (deviceIdMin) query.DEVICE_ID.$gte = Number(deviceIdMin);
-      if (deviceIdMax) query.DEVICE_ID.$lte = Number(deviceIdMax);
+      if (deviceIdMin) query.DEVICE_ID.$gte = deviceIdMin;
+      if (deviceIdMax) query.DEVICE_ID.$lte = deviceIdMax;
     }
     if (type) {
       const typeArray = type.split(',').map(t => Number(t.trim()));
@@ -773,7 +761,6 @@ export const getEventsReport = async (req, res) => {
       if (toDate) query.TS.$lte = Math.floor(new Date(toDate).getTime() / 1000);
     }
 
-    // Fetch events without pagination
     const events = await Events.find(query)
       .sort({ TS: -1 })
       .lean();
@@ -786,15 +773,13 @@ export const getEventsReport = async (req, res) => {
       });
     }
 
-    // Prepare data with specified columns
     const reportData = events.map(event => ({
       eventType: event.Type,
-      ts: new Date(event.TS * 1000).toISOString(), // Human-readable TS
-      eventName: event.Event_Name || 'N/A', // Default to 'N/A' if not present
-      details: event.Details ? JSON.stringify(event.Details) : 'N/A' // Stringify Details object
+      ts: new Date(event.TS * 1000).toISOString(),
+      eventName: event.Event_Name || 'N/A',
+      details: event.Details ? JSON.stringify(event.Details) : 'N/A'
     }));
 
-    // Handle different format requests
     switch (format.toLowerCase()) {
       case 'csv': {
         const fields = ['eventType', 'ts', 'eventName', 'details'];

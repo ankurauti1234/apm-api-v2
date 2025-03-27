@@ -6,7 +6,7 @@ const detailsSchema = new mongoose.Schema(
 );
 
 const eventsSchema = new mongoose.Schema({
-    DEVICE_ID: { type: Number, required: true },
+    DEVICE_ID: { type: mongoose.Schema.Types.Mixed, required: true }, // Changed to Mixed type
     TS: { type: Number, required: true },
     Type: { type: Number, required: true },
     AlertType: String,
