@@ -4,7 +4,7 @@ const meterSchema = new mongoose.Schema({
     METER_ID: {
         type: Number,
         required: true,
-        unique: true
+        unique: true // This creates the necessary unique index
     },
     associated: {
         type: Boolean,
@@ -56,8 +56,7 @@ meterSchema.methods.resetMeter = async function () {
     await this.save();
 };
 
-// Add indexes
-meterSchema.index({ METER_ID: 1 });
+// Add indexes (remove METER_ID index to avoid duplication)
 meterSchema.index({ associated_with: 1 });
 meterSchema.index({ created_at: 1 }); // For sorting
 meterSchema.index({ associated: 1 });
